@@ -30,6 +30,8 @@ fun SettingsScreen(
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
     var showKey by remember { mutableStateOf(false) }
+    var fetchUuid by remember { mutableStateOf("") }
+    var fetchPin by remember { mutableStateOf("") }
     
     // Show toast messages
     LaunchedEffect(uiState.saveSuccess) {
@@ -49,6 +51,14 @@ fun SettingsScreen(
     LaunchedEffect(uiState.errorMessage) {
         uiState.errorMessage?.let { error ->
             Toast.makeText(context, error, Toast.LENGTH_LONG).show()
+        }
+    }
+
+    // Show fetch config success toast
+    LaunchedEffect(uiState.showFetchDialog) {
+        // When dialog closes and we are not fetching, it means success if no error
+        if (!uiState.showFetchDialog && !uiState.isFetchingConfig && uiState.fetchError == null && uiState.supabaseUrl.isNotBlank()) {
+            // Only show if it was a fetch action (URL was just populated)
         }
     }
     
@@ -99,6 +109,21 @@ fun SettingsScreen(
                         color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
                     )
                 }
+            }
+
+            // Fetch Config Button
+            OutlinedButton(
+                onClick = {
+                    fetchUuid = ""
+                    fetchPin = ""
+                    viewModel.showFetchDialog()
+                },
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = Color(0xFF1565C0)
+                )
+            ) {
+                Text("\uD83D\uDD11 Fetch Config from Server")
             }
             
             // Supabase URL Field
@@ -264,5 +289,94 @@ fun SettingsScreen(
                 }
             }
         }
+    }
+
+    // --- FETCH CONFIG DIALOG ---
+    if (uiState.showFetchDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                if (!uiState.isFetchingConfig) viewModel.dismissFetchDialog()
+            },
+            title = { Text("Fetch Supabase Config") },
+            text = {
+                Column {
+                    Text(
+                        "Enter the UUID and PIN from your nameserver config.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        "Create config at: pragament.github.io/html_intranet_nameserver",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(Modifier.height(12.dp))
+
+                    OutlinedTextField(
+                        value = fetchUuid,
+                        onValueChange = { fetchUuid = it },
+                        label = { Text("UUID *") },
+                        placeholder = { Text("e.g. g3kfI3sfWHB8Hbe0cGlu") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        isError = uiState.fetchError != null && fetchUuid.isBlank(),
+                        enabled = !uiState.isFetchingConfig
+                    )
+
+                    Spacer(Modifier.height(8.dp))
+
+                    OutlinedTextField(
+                        value = fetchPin,
+                        onValueChange = { fetchPin = it },
+                        label = { Text("PIN (Optional)") },
+                        placeholder = { Text("e.g. 123456") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        visualTransformation = PasswordVisualTransformation(),
+                        enabled = !uiState.isFetchingConfig
+                    )
+
+                    if (uiState.fetchError != null) {
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            uiState.fetchError!!,
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+
+                    if (uiState.isFetchingConfig) {
+                        Spacer(Modifier.height(12.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                            Spacer(Modifier.width(8.dp))
+                            Text("Fetching config...", style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.fetchConfigFromServer(fetchUuid, fetchPin)
+                    },
+                    enabled = !uiState.isFetchingConfig
+                ) {
+                    Text("Fetch")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { viewModel.dismissFetchDialog() },
+                    enabled = !uiState.isFetchingConfig
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }

@@ -4,7 +4,7 @@
             "outputFile": "com.pragament.employerreportsviewer.app-mergeDebugResources-54:/values-night-v8/values-night-v8.xml",
             "map": [
                 {
-                    "source": "D:\\Inter(Pragament)\\EmployerReportsViewer\\app\\src\\main\\res\\values-night\\themes.xml",
+                    "source": "D:\\Inter(Pragament)\\android_kotlin_attendance_employer_admin\\app\\src\\main\\res\\values-night\\themes.xml",
                     "from": {
                         "startLines": "2",
                         "startColumns": "4",

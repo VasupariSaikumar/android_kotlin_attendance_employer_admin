@@ -1,26 +1,26 @@
 [
     {
+        "merged": "com.pragament.employerreportsviewer.app-merged_res-56:/mipmap-anydpi-v26_ic_launcher.xml.flat",
+        "source": "com.pragament.employerreportsviewer.app-main-58:/mipmap-anydpi-v26/ic_launcher.xml"
+    },
+    {
         "merged": "com.pragament.employerreportsviewer.app-merged_res-56:/xml_network_security_config.xml.flat",
         "source": "com.pragament.employerreportsviewer.app-main-58:/xml/network_security_config.xml"
     },
     {
-        "merged": "C:\\Users\\saiku\\.gradle\\daemon\\8.2\\com.pragament.employerreportsviewer.app-merged_res-56:\\mipmap-anydpi-v26_ic_launcher_round.xml.flat",
-        "source": "C:\\Users\\saiku\\.gradle\\daemon\\8.2\\com.pragament.employerreportsviewer.app-main-58:\\mipmap-anydpi-v26\\ic_launcher_round.xml"
+        "merged": "com.pragament.employerreportsviewer.app-merged_res-56:/xml_backup_rules.xml.flat",
+        "source": "com.pragament.employerreportsviewer.app-main-58:/xml/backup_rules.xml"
     },
     {
-        "merged": "C:\\Users\\saiku\\.gradle\\daemon\\8.2\\com.pragament.employerreportsviewer.app-merged_res-56:\\xml_data_extraction_rules.xml.flat",
-        "source": "C:\\Users\\saiku\\.gradle\\daemon\\8.2\\com.pragament.employerreportsviewer.app-main-58:\\xml\\data_extraction_rules.xml"
+        "merged": "com.pragament.employerreportsviewer.app-merged_res-56:/mipmap-anydpi-v26_ic_launcher_round.xml.flat",
+        "source": "com.pragament.employerreportsviewer.app-main-58:/mipmap-anydpi-v26/ic_launcher_round.xml"
     },
     {
-        "merged": "C:\\Users\\saiku\\.gradle\\daemon\\8.2\\com.pragament.employerreportsviewer.app-merged_res-56:\\xml_backup_rules.xml.flat",
-        "source": "C:\\Users\\saiku\\.gradle\\daemon\\8.2\\com.pragament.employerreportsviewer.app-main-58:\\xml\\backup_rules.xml"
+        "merged": "com.pragament.employerreportsviewer.app-merged_res-56:/drawable_ic_launcher_foreground.xml.flat",
+        "source": "com.pragament.employerreportsviewer.app-main-58:/drawable/ic_launcher_foreground.xml"
     },
     {
-        "merged": "C:\\Users\\saiku\\.gradle\\daemon\\8.2\\com.pragament.employerreportsviewer.app-merged_res-56:\\drawable_ic_launcher_foreground.xml.flat",
-        "source": "C:\\Users\\saiku\\.gradle\\daemon\\8.2\\com.pragament.employerreportsviewer.app-main-58:\\drawable\\ic_launcher_foreground.xml"
-    },
-    {
-        "merged": "C:\\Users\\saiku\\.gradle\\daemon\\8.2\\com.pragament.employerreportsviewer.app-merged_res-56:\\mipmap-anydpi-v26_ic_launcher.xml.flat",
-        "source": "C:\\Users\\saiku\\.gradle\\daemon\\8.2\\com.pragament.employerreportsviewer.app-main-58:\\mipmap-anydpi-v26\\ic_launcher.xml"
+        "merged": "com.pragament.employerreportsviewer.app-merged_res-56:/xml_data_extraction_rules.xml.flat",
+        "source": "com.pragament.employerreportsviewer.app-main-58:/xml/data_extraction_rules.xml"
     }
 ]

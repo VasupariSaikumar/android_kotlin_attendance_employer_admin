@@ -4,6 +4,8 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.pragament.employerreportsviewer.data.AppPreferences
+import com.pragament.employerreportsviewer.data.model.EmployeeDeviceAccess
+import com.pragament.employerreportsviewer.data.model.EmployeeGoogleAccess
 import com.pragament.employerreportsviewer.data.model.SupabaseAttendanceRecord
 import com.pragament.employerreportsviewer.data.repository.AttendanceRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -31,24 +33,30 @@ data class ReportsUiState(
     val selectedEmployeeId: String? = null,
     val selectedDateFilter: DateFilter = DateFilter.ALL,
     val errorMessage: String? = null,
-    val lastRefresh: String? = null
+    val lastRefresh: String? = null,
+    // Approvals state
+    val pendingGoogleApprovals: List<EmployeeGoogleAccess> = emptyList(),
+    val pendingDeviceApprovals: List<EmployeeDeviceAccess> = emptyList(),
+    val approvalsLoading: Boolean = false,
+    val approvalsError: String? = null,
+    val approvalActionMessage: String? = null  // toast-style one-shot feedback
 )
 
 class ReportsViewModel(application: Application) : AndroidViewModel(application) {
-    
+
     private val prefs = AppPreferences(application)
     private val repository = AttendanceRepository()
-    
+
     private val _uiState = MutableStateFlow(ReportsUiState())
     val uiState: StateFlow<ReportsUiState> = _uiState.asStateFlow()
-    
+
     private var supabaseUrl: String = ""
     private var supabaseKey: String = ""
-    
+
     init {
         checkConfiguration()
     }
-    
+
     fun checkConfiguration() {
         viewModelScope.launch {
             val config = prefs.supabaseConfig.first()
@@ -56,13 +64,14 @@ class ReportsViewModel(application: Application) : AndroidViewModel(application)
             supabaseKey = config.second
             val configured = supabaseUrl.isNotBlank() && supabaseKey.isNotBlank()
             _uiState.value = _uiState.value.copy(isConfigured = configured)
-            
+
             if (configured) {
                 loadRecords()
+                loadPendingApprovals()
             }
         }
     }
-    
+
     fun loadRecords() {
         if (supabaseUrl.isBlank() || supabaseKey.isBlank()) {
             _uiState.value = _uiState.value.copy(
@@ -71,12 +80,12 @@ class ReportsViewModel(application: Application) : AndroidViewModel(application)
             )
             return
         }
-        
+
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
-            
+
             val result = repository.getAllRecords(supabaseUrl, supabaseKey)
-            
+
             result.fold(
                 onSuccess = { records ->
                     val employeeIds = records.map { it.employeeId }.distinct().sorted()
@@ -98,7 +107,7 @@ class ReportsViewModel(application: Application) : AndroidViewModel(application)
             )
         }
     }
-    
+
     fun selectEmployee(employeeId: String?) {
         _uiState.value = _uiState.value.copy(
             selectedEmployeeId = employeeId,
@@ -109,7 +118,7 @@ class ReportsViewModel(application: Application) : AndroidViewModel(application)
             )
         )
     }
-    
+
     fun selectDateFilter(filter: DateFilter) {
         _uiState.value = _uiState.value.copy(
             selectedDateFilter = filter,
@@ -120,19 +129,19 @@ class ReportsViewModel(application: Application) : AndroidViewModel(application)
             )
         )
     }
-    
+
     private fun applyFilters(
         records: List<SupabaseAttendanceRecord>,
         employeeId: String?,
         dateFilter: DateFilter
     ): List<SupabaseAttendanceRecord> {
         var filtered = records
-        
+
         // Filter by employee
         if (employeeId != null) {
             filtered = filtered.filter { it.employeeId == employeeId }
         }
-        
+
         // Filter by date
         val today = LocalDate.now()
         filtered = when (dateFilter) {
@@ -172,15 +181,133 @@ class ReportsViewModel(application: Application) : AndroidViewModel(application)
                 } ?: false
             }
         }
-        
+
         return filtered
     }
-    
+
     fun refresh() {
         loadRecords()
+        loadPendingApprovals()
     }
-    
+
     fun clearError() {
         _uiState.value = _uiState.value.copy(errorMessage = null)
+    }
+
+    // ─── Approval Actions ─────────────────────────────────────────────────────
+
+    /** Load both Google and device pending approvals from Supabase. */
+    fun loadPendingApprovals() {
+        if (supabaseUrl.isBlank() || supabaseKey.isBlank()) return
+
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(approvalsLoading = true, approvalsError = null)
+
+            val googleResult = repository.fetchPendingGoogleApprovals(supabaseUrl, supabaseKey)
+            val deviceResult = repository.fetchPendingDeviceApprovals(supabaseUrl, supabaseKey)
+
+            val googleList = googleResult.getOrElse {
+                _uiState.value = _uiState.value.copy(
+                    approvalsError = "Failed to load email approvals: ${it.message}"
+                )
+                emptyList()
+            }
+            val deviceList = deviceResult.getOrElse {
+                _uiState.value = _uiState.value.copy(
+                    approvalsError = "Failed to load device approvals: ${it.message}"
+                )
+                emptyList()
+            }
+
+            _uiState.value = _uiState.value.copy(
+                approvalsLoading = false,
+                pendingGoogleApprovals = googleList,
+                pendingDeviceApprovals = deviceList
+            )
+        }
+    }
+
+    fun approveGoogleAccess(id: String) {
+        viewModelScope.launch {
+            val result = repository.approveGoogleAccess(supabaseUrl, supabaseKey, id)
+            result.fold(
+                onSuccess = {
+                    _uiState.value = _uiState.value.copy(
+                        approvalActionMessage = "Email request approved ✓",
+                        pendingGoogleApprovals = _uiState.value.pendingGoogleApprovals.filter { it.id != id }
+                    )
+                },
+                onFailure = { e ->
+                    _uiState.value = _uiState.value.copy(
+                        approvalsError = "Approve failed: ${e.message}"
+                    )
+                }
+            )
+        }
+    }
+
+    fun rejectGoogleAccess(id: String) {
+        viewModelScope.launch {
+            val result = repository.rejectGoogleAccess(supabaseUrl, supabaseKey, id)
+            result.fold(
+                onSuccess = {
+                    _uiState.value = _uiState.value.copy(
+                        approvalActionMessage = "Email request rejected",
+                        pendingGoogleApprovals = _uiState.value.pendingGoogleApprovals.filter { it.id != id }
+                    )
+                },
+                onFailure = { e ->
+                    _uiState.value = _uiState.value.copy(
+                        approvalsError = "Reject failed: ${e.message}"
+                    )
+                }
+            )
+        }
+    }
+
+    fun approveDeviceAccess(id: String) {
+        viewModelScope.launch {
+            val result = repository.approveDeviceAccess(supabaseUrl, supabaseKey, id)
+            result.fold(
+                onSuccess = {
+                    _uiState.value = _uiState.value.copy(
+                        approvalActionMessage = "Device request approved ✓",
+                        pendingDeviceApprovals = _uiState.value.pendingDeviceApprovals.filter { it.id != id }
+                    )
+                },
+                onFailure = { e ->
+                    _uiState.value = _uiState.value.copy(
+                        approvalsError = "Approve failed: ${e.message}"
+                    )
+                }
+            )
+        }
+    }
+
+    fun rejectDeviceAccess(id: String) {
+        viewModelScope.launch {
+            val result = repository.rejectDeviceAccess(supabaseUrl, supabaseKey, id)
+            result.fold(
+                onSuccess = {
+                    _uiState.value = _uiState.value.copy(
+                        approvalActionMessage = "Device request rejected",
+                        pendingDeviceApprovals = _uiState.value.pendingDeviceApprovals.filter { it.id != id }
+                    )
+                },
+                onFailure = { e ->
+                    _uiState.value = _uiState.value.copy(
+                        approvalsError = "Reject failed: ${e.message}"
+                    )
+                }
+            )
+        }
+    }
+
+    fun clearApprovalActionMessage() {
+        _uiState.value = _uiState.value.copy(approvalActionMessage = null)
+    }
+
+    fun clearApprovalsError() {
+        _uiState.value = _uiState.value.copy(approvalsError = null)
     }
 }

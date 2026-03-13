@@ -47,6 +47,11 @@ fun ReportsDashboard(
 
     val pendingCount = uiState.pendingGoogleApprovals.size + uiState.pendingDeviceApprovals.size
 
+    // Re-check configuration on return from settings/launch
+    LaunchedEffect(Unit) {
+        viewModel.checkConfiguration()
+    }
+
     // Show attendance error
     LaunchedEffect(uiState.errorMessage) {
         uiState.errorMessage?.let { error ->
@@ -1111,9 +1116,27 @@ fun AttendanceRecordCard(
 
 // ─── Private helpers ──────────────────────────────────────────────────────────
 
+private fun parseSupabaseTime(isoTime: String): LocalDateTime {
+    return try {
+        var cleanTime = isoTime.replace(" ", "T")
+        if (!cleanTime.contains("Z", ignoreCase = true) && !cleanTime.drop(11).contains("+") && !cleanTime.drop(11).contains("-")) {
+            cleanTime += "Z" // Default to UTC if no timezone info is found
+        }
+        java.time.OffsetDateTime.parse(cleanTime)
+            .atZoneSameInstant(java.time.ZoneId.systemDefault())
+            .toLocalDateTime()
+    } catch (e: Exception) {
+        try {
+            LocalDateTime.parse(isoTime.replace(" ", "T").take(19))
+        } catch (e2: Exception) {
+            LocalDateTime.now()
+        }
+    }
+}
+
 private fun formatTime(isoTime: String): String {
     return try {
-        val dateTime = LocalDateTime.parse(isoTime.replace(" ", "T").take(19))
+        val dateTime = parseSupabaseTime(isoTime)
         dateTime.format(DateTimeFormatter.ofPattern("hh:mm a"))
     } catch (e: Exception) {
         isoTime.take(8)
@@ -1122,7 +1145,7 @@ private fun formatTime(isoTime: String): String {
 
 private fun formatDate(isoTime: String): String {
     return try {
-        val dateTime = LocalDateTime.parse(isoTime.replace(" ", "T").take(19))
+        val dateTime = parseSupabaseTime(isoTime)
         dateTime.format(DateTimeFormatter.ofPattern("EEE, MMM d, yyyy"))
     } catch (e: Exception) {
         isoTime.take(10)
@@ -1131,9 +1154,7 @@ private fun formatDate(isoTime: String): String {
 
 private fun formatApprovalTime(isoTime: String): String {
     return try {
-        // Handle ISO-8601 with optional Z or offset
-        val normalised = isoTime.replace("Z", "").replace(" ", "T").take(19)
-        val dateTime = LocalDateTime.parse(normalised)
+        val dateTime = parseSupabaseTime(isoTime)
         dateTime.format(DateTimeFormatter.ofPattern("MMM d, yyyy  hh:mm a"))
     } catch (e: Exception) {
         isoTime

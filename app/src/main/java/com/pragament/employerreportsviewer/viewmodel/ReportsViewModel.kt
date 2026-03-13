@@ -130,6 +130,24 @@ class ReportsViewModel(application: Application) : AndroidViewModel(application)
         )
     }
 
+    private fun parseSupabaseTime(isoTime: String): LocalDateTime {
+        return try {
+            var cleanTime = isoTime.replace(" ", "T")
+            if (!cleanTime.contains("Z", ignoreCase = true) && !cleanTime.drop(11).contains("+") && !cleanTime.drop(11).contains("-")) {
+                cleanTime += "Z" // Default to UTC
+            }
+            java.time.OffsetDateTime.parse(cleanTime)
+                .atZoneSameInstant(java.time.ZoneId.systemDefault())
+                .toLocalDateTime()
+        } catch (e: Exception) {
+            try {
+                LocalDateTime.parse(isoTime.replace(" ", "T").take(19))
+            } catch (e2: Exception) {
+                LocalDateTime.now()
+            }
+        }
+    }
+
     private fun applyFilters(
         records: List<SupabaseAttendanceRecord>,
         employeeId: String?,
@@ -149,8 +167,7 @@ class ReportsViewModel(application: Application) : AndroidViewModel(application)
             DateFilter.TODAY -> filtered.filter { record ->
                 record.punchInTime?.let { time ->
                     try {
-                        val recordDate = LocalDateTime.parse(time.replace(" ", "T").take(19))
-                            .toLocalDate()
+                        val recordDate = parseSupabaseTime(time).toLocalDate()
                         recordDate == today
                     } catch (e: Exception) {
                         false
@@ -160,8 +177,7 @@ class ReportsViewModel(application: Application) : AndroidViewModel(application)
             DateFilter.THIS_WEEK -> filtered.filter { record ->
                 record.punchInTime?.let { time ->
                     try {
-                        val recordDate = LocalDateTime.parse(time.replace(" ", "T").take(19))
-                            .toLocalDate()
+                        val recordDate = parseSupabaseTime(time).toLocalDate()
                         val weekStart = today.minusDays(today.dayOfWeek.value.toLong() - 1)
                         recordDate >= weekStart && recordDate <= today
                     } catch (e: Exception) {
@@ -172,8 +188,7 @@ class ReportsViewModel(application: Application) : AndroidViewModel(application)
             DateFilter.THIS_MONTH -> filtered.filter { record ->
                 record.punchInTime?.let { time ->
                     try {
-                        val recordDate = LocalDateTime.parse(time.replace(" ", "T").take(19))
-                            .toLocalDate()
+                        val recordDate = parseSupabaseTime(time).toLocalDate()
                         recordDate.month == today.month && recordDate.year == today.year
                     } catch (e: Exception) {
                         false
